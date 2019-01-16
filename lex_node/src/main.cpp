@@ -39,12 +39,11 @@ void shutdown(const Aws::SDKOptions &options) {
  * @param argv
  * @return
  */
-int main(int argc, char * argv[])
-{
+int main(int argc, char *argv[]) {
   ros::init(argc, argv, "lex_node");
 
   Aws::Utils::Logging::InitializeAWSLogging(
-    Aws::MakeShared<Aws::Utils::Logging::AWSROSLogger>("lex_node"));
+      Aws::MakeShared<Aws::Utils::Logging::AWSROSLogger>("lex_node"));
   Aws::SDKOptions options;
   Aws::InitAPI(options);
 
