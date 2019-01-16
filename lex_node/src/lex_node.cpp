@@ -52,12 +52,12 @@ AudioTextConversation::Response& operator<<(lex_common_msgs::AudioTextConversati
 
 LexNode::LexNode() : node_handle_("~") {}
 
-ErrorCode LexNode::Init(std::unique_ptr<LexInteractor> &&lex_interactor)
+ErrorCode LexNode::Init(std::unique_ptr<PostContentInterface> &&post_content)
 {
-  if (!lex_interactor) {
+  if (!post_content) {
     return ErrorCode::INVALID_ARGUMENT;
   }
-  lex_interactor_ = std::move(lex_interactor);
+  post_content_ = std::move(post_content);
   lex_server_ =
     node_handle_.advertiseService<>("lex_conversation", &LexNode::LexServerCallback, this);
 }
@@ -68,7 +68,7 @@ bool LexNode::LexServerCallback(lex_common_msgs::AudioTextConversationRequest & 
   LexRequest lex_request;
   lex_request << request;
   LexResponse lex_response;
-  bool is_success = !lex_interactor_->PostContent(lex_request, lex_response);
+  bool is_success = !post_content_->PostContent(lex_request, lex_response);
   if (is_success) {
     response << lex_response;
   }

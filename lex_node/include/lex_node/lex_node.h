@@ -43,9 +43,9 @@ private:
   ros::ServiceServer lex_server_;
 
   /**
-   * Lex interactor.
+   * Post content function.
    */
-  std::unique_ptr<Aws::Lex::LexInteractor> lex_interactor_;
+  std::unique_ptr<PostContentInterface> post_content_;
 
   /**
    * The ros node handle.
@@ -77,7 +77,7 @@ public:
   /**
    * Initialize the lex node.
    */
-  ErrorCode Init(std::unique_ptr<LexInteractor> &&lex_interactor);
+  ErrorCode Init(std::unique_ptr<PostContentInterface> &&lex_interactor);
 
   /**
    * Conversion function since in ROS2, this class will inherit from Node.
