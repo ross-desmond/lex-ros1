@@ -22,7 +22,7 @@
 #include <aws/lex/LexRuntimeServiceClient.h>
 #include <aws_common/sdk_utils/aws_error.h>
 #include <gtest/gtest.h>
-#include <lex_node/lex_configuration.h>
+
 #include <lex_node/lex_node.h>
 #include <ros/ros.h>
 
@@ -31,16 +31,20 @@ using namespace Aws;
 namespace Aws {
 namespace Lex {
 
-/**
- * Copy a result into an AudioTextConversionResponse.
- *
- * @param result to copy to the response
- * @param response [out] result copy
- * @return error code
- */
-int CopyResult(const LexRuntimeService::Model::PostContentResult & result,
-               lex_common_msgs::AudioTextConversationResponse & response);
-
+ErrorCode BuildLexNode(LexNode &lex_node, std::shared_ptr<Client::ParameterReaderInterface> params) {
+  {
+    // Build a lex interactor and give it to the lex node to use it.
+    // Lex has an internal conversation session, therefore the lex interactor
+    // should only be available for use by one point of entry.
+    auto lex_interactor = std::unique_ptr<Aws::Lex::LexInteractor>(new Aws::Lex::LexInteractor());
+    auto error_code = Aws::Lex::BuildLexInteractor(params, '/', *lex_interactor);
+    if (error_code != ErrorCode::SUCCESS) {
+      return error_code;
+    }
+    error_code = lex_node.Init(std::move(lex_interactor));
+    return error_code;
+  }
+}
 /**
  * Post content to lex given an audio text conversation request and respond to it.
  * Configures the call with the lex configuration and lex_runtime_client.
@@ -63,7 +67,7 @@ bool PostContent(
 class LexNodeSuite : public ::testing::Test
 {
 protected:
-  LexNodeSuite()
+  LexNodeSuite() : configuration_('/')
   {
     options_.loggingOptions.logLevel = Utils::Logging::LogLevel::Trace;
 
@@ -107,9 +111,10 @@ public:
   {
     int_map_ = {{"aws_client_configuration/connect_timeout_ms", 9000},
                 {"aws_client_configuration/request_timeout_ms", 9000}};
-    string_map_ = {{Lex::kUserIdKey, user_id},
-                   {Lex::kBotNameKey, bot_name},
-                   {Lex::kBotAliasKey, bot_alias},
+    Lex::LexConfiguration configuration('/');
+    string_map_ = {{configuration.user_id_key, user_id},
+                   {configuration.bot_name_key, bot_name},
+                   {configuration.bot_alias_key, bot_alias},
                    {"aws_client_configuration/region", "us-west-2"}};
   }
 
@@ -210,32 +215,21 @@ TEST_F(LexNodeSuite, BuildLexNodeWithEmptyParams)
 {
   auto param_reader = std::make_shared<TestParameterReader>();
 
-  try {
-    auto lex_node = Lex::BuildLexNode(param_reader);
-    FAIL() << "Expected std::invalid_argument exception to be thrown";
-  } catch (const std::invalid_argument & err) {
-    EXPECT_STREQ(err.what(), "Lex configuration not fully specified");
-  } catch (...) {
-    FAIL() << "Expected std::invalid_argument exception to be thrown";
-  }
+  Lex::LexNode lex_node;
+  auto error_code = Lex::BuildLexNode(lex_node, param_reader);
+  ASSERT_EQ(INVALID_LEX_CONFIGURATION, error_code);
 }
 
 /**
- * Tests the creation of a Lex node instance with valid parameters
+ * Tests the creation of a Lex node instance with null LexInteractor
  */
-TEST_F(LexNodeSuite, BuildLexNodeWithParams)
+TEST_F(LexNodeSuite, BuildLexNodeWithNullLexInteractor)
 {
-  auto param_reader = std::make_shared<TestParameterReader>(
-    configuration_.user_id, configuration_.bot_name, configuration_.bot_alias);
+  auto param_reader = std::make_shared<TestParameterReader>();
 
-  try {
-    auto lex_node = Lex::BuildLexNode(param_reader);
-    EXPECT_TRUE(lex_node.IsServiceValid());
-  } catch (const std::exception & err) {
-    FAIL() << "Unexpected error \"" << err.what() << "\" thrown";
-  } catch (...) {
-    FAIL() << "Unexpected exception thrown";
-  }
+  Lex::LexNode lex_node;
+  auto error_code = lex_node.Init(std::unique_ptr<Lex::LexInteractor>());
+  ASSERT_EQ(INVALID_ARGUMENT, error_code);
 }
 
 /**
@@ -245,13 +239,14 @@ TEST_F(LexNodeSuite, LexNodePostContentFail)
 {
   auto param_reader = std::make_shared<TestParameterReader>(
     configuration_.user_id, configuration_.bot_name, configuration_.bot_alias);
-  auto lex_node = Lex::BuildLexNode(param_reader);
-  ASSERT_TRUE(lex_node.IsServiceValid());
+  Lex::LexNode lex_node;
+  ErrorCode error = Lex::BuildLexNode(lex_node, param_reader);
+  ASSERT_EQ(SUCCESS, error);
 
   auto lex_runtime_client = std::make_shared<MockLexClient>(false);
 
   lex_common_msgs::AudioTextConversationResponse response;
-  bool success = PostContent(request_, response, configuration_, lex_runtime_client);
+  bool success = PostContent(request_, response);
   EXPECT_FALSE(success);
 
   // check that the response hasn't been filled because PostContent() was supposed to have failed
@@ -270,8 +265,8 @@ TEST_F(LexNodeSuite, LexNodePostContentSucceed)
 {
   auto param_reader = std::make_shared<TestParameterReader>(
     configuration_.user_id, configuration_.bot_name, configuration_.bot_alias);
-  auto lex_node = Lex::BuildLexNode(param_reader);
-  ASSERT_TRUE(lex_node.IsServiceValid());
+  Lex::LexNode lex_node;
+  Lex::BuildLexNode(lex_node, param_reader);
 
   auto lex_runtime_client = std::make_shared<MockLexClient>(true);
 
