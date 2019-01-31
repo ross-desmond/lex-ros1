@@ -52,10 +52,10 @@ int main(int argc, char *argv[]) {
     // Build a lex interactor and give it to the lex node to use it.
     // Lex has an internal conversation session, therefore the lex interactor
     // should only be available for use by one point of entry.
-    auto lex_interactor = std::unique_ptr<Aws::Lex::LexInteractor>(new Aws::Lex::LexInteractor());
+    auto lex_interactor = std::make_shared<Aws::Lex::LexInteractor>();
     auto params = std::make_shared<Aws::Client::Ros1NodeParameterReader>();
-    auto error_code = Aws::Lex::BuildLexInteractor(params, '/', *lex_interactor);
-    if (error_code != ErrorCode::SUCCESS) {
+    auto error_code = Aws::Lex::BuildLexInteractor(params, *lex_interactor);
+    if (error_code != Aws::Lex::ErrorCode::SUCCESS) {
       shutdown(options);
       return error_code;
     }
@@ -69,5 +69,5 @@ int main(int argc, char *argv[]) {
   AWS_LOG_INFO(__func__, "Shutting down Lex Node...");
   shutdown(options);
 
-  return SUCCESS;
+  return Aws::Lex::ErrorCode::SUCCESS;
 }

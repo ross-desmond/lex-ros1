@@ -39,7 +39,7 @@ AudioTextConversation::Response& operator<<(lex_common_msgs::AudioTextConversati
   ros_response.intent_name = lex_response.intent_name;
   ros_response.message_format_type = lex_response.message_format_type;
   ros_response.text_response = lex_response.text_response;
-  ros_response.slots = std::vector<lex_common_msgs::KeyValue>(lex_response.slots.size());
+  ros_response.slots = std::vector<lex_common_msgs::KeyValue>();
   std::transform(lex_response.slots.begin(), lex_response.slots.end(),
                  std::back_inserter(ros_response.slots), [](const std::pair<std::string, std::string>& slot) {
               lex_common_msgs::KeyValue key_value;
@@ -52,14 +52,15 @@ AudioTextConversation::Response& operator<<(lex_common_msgs::AudioTextConversati
 
 LexNode::LexNode() : node_handle_("~") {}
 
-ErrorCode LexNode::Init(std::unique_ptr<PostContentInterface> &&post_content)
+ErrorCode LexNode::Init(std::shared_ptr<PostContentInterface> post_content)
 {
   if (!post_content) {
     return ErrorCode::INVALID_ARGUMENT;
   }
-  post_content_ = std::move(post_content);
+  post_content_ = post_content;
   lex_server_ =
     node_handle_.advertiseService<>("lex_conversation", &LexNode::LexServerCallback, this);
+  return ErrorCode::SUCCESS;
 }
 
 bool LexNode::LexServerCallback(lex_common_msgs::AudioTextConversationRequest & request,

@@ -45,7 +45,7 @@ private:
   /**
    * Post content function.
    */
-  std::unique_ptr<PostContentInterface> post_content_;
+  std::shared_ptr<PostContentInterface> post_content_;
 
   /**
    * The ros node handle.
@@ -76,8 +76,10 @@ public:
 
   /**
    * Initialize the lex node.
+   *
+   * @param lex_interactor to use as the method to call lex.
    */
-  ErrorCode Init(std::unique_ptr<PostContentInterface> &&lex_interactor);
+  ErrorCode Init(std::shared_ptr<PostContentInterface> lex_interactor);
 
   /**
    * Conversion function since in ROS2, this class will inherit from Node.
