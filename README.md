@@ -48,6 +48,7 @@ To build from source, clone the latest version from master branch and compile th
         cd ~/ros-workspace/src
         git clone https://github.com/aws-robotics/utils-common.git
         git clone https://github.com/aws-robotics/utils-ros1.git
+        git clone https://github.com/aws-robotics/lex-common.git
         git clone https://github.com/aws-robotics/lex-ros1.git
 
 - Install dependencies
